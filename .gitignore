@@ -1,0 +1,64 @@
+# ---- Gradle / JVM ----
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# IntelliJ's Kotlin compiler output for the JVM `core` module. This duplicates
+# every source file, so committing it would double the codebase and conflict on
+# every future edit.
+bin/
+.kotlin/
+
+# ---- Android ----
+local.properties
+*.apk
+*.aab
+*.ap_
+*.dex
+*.class
+.cxx/
+captures/
+.externalNativeBuild/
+
+# ---- Signing material: NEVER commit ----
+# The app is sideload-only and uses a debug/self-signed key, but if a release key
+# ever appears in the working tree it must not reach a remote.
+*.jks
+*.keystore
+keystore.properties
+signing.properties
+google-services.json
+
+# ---- Local data and model weights ----
+# Phase 3+ downloads several hundred MB of ONNX/GGUF models. Keep them out of
+# history; docs/benchmarks.md says how to fetch them.
+*.onnx
+*.gguf
+*.tflite
+models/
+*.sqlite
+*.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm
+*.db
+*.db-journal
+
+# ---- Generated / local-only artifacts ----
+eval/results/
+scripts/__pycache__/
+*.py[cod]
+.venv/
+venv/
+benchmark-results/
+*.log
+
+# ---- Editors / OS ----
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+desktop.ini

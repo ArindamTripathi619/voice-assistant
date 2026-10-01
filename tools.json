@@ -1,0 +1,252 @@
+{
+  "version": 1,
+  "notes": [
+    "Slots ending in _ref, query, app_name, alias, name hold RAW SPOKEN STRINGS. The model never emits phone numbers, contact IDs, URIs or package names; the entity resolver does that.",
+    "'group' is for the router: inject only the 1-3 relevant groups per query to keep the prompt short and the KV prefix cacheable.",
+    "'confirm' is for the executor and is stripped from the model prompt: never | ambiguous (only if resolver confidence is low) | always (read back and wait for yes).",
+    "Keep descriptions short; they are prefill cost on every call."
+  ],
+  "tools": [
+    {
+      "name": "set_flashlight",
+      "group": "device",
+      "confirm": "never",
+      "description": "Turn the flashlight on or off.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "state": { "type": "string", "enum": ["on", "off", "toggle"] }
+        },
+        "required": ["state"]
+      }
+    },
+    {
+      "name": "set_brightness",
+      "group": "device",
+      "confirm": "never",
+      "description": "Change screen brightness.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "action": { "type": "string", "enum": ["set", "up", "down", "auto"] },
+          "percent": { "type": "integer", "minimum": 0, "maximum": 100, "description": "Only with action=set." }
+        },
+        "required": ["action"]
+      }
+    },
+    {
+      "name": "set_volume",
+      "group": "device",
+      "confirm": "never",
+      "description": "Change volume.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "action": { "type": "string", "enum": ["set", "up", "down", "mute", "unmute"] },
+          "percent": { "type": "integer", "minimum": 0, "maximum": 100, "description": "Only with action=set." },
+          "stream": { "type": "string", "enum": ["media", "ring", "alarm", "notification"], "default": "media" }
+        },
+        "required": ["action"]
+      }
+    },
+    {
+      "name": "toggle_setting",
+      "group": "device",
+      "confirm": "never",
+      "description": "Turn a phone setting on or off.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "setting": {
+            "type": "string",
+            "enum": ["wifi", "mobile_data", "bluetooth", "airplane_mode", "hotspot", "nfc", "location", "do_not_disturb", "auto_rotate"]
+          },
+          "state": { "type": "string", "enum": ["on", "off", "toggle"] }
+        },
+        "required": ["setting", "state"]
+      }
+    },
+    {
+      "name": "open_app",
+      "group": "device",
+      "confirm": "never",
+      "description": "Open an app by name.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "app_name": { "type": "string", "description": "App name as spoken, e.g. 'camera', 'spotify'." }
+        },
+        "required": ["app_name"]
+      }
+    },
+    {
+      "name": "set_alarm",
+      "group": "device",
+      "confirm": "never",
+      "description": "Set an alarm.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "time": { "type": "string", "description": "24-hour HH:MM, e.g. '06:30'." },
+          "label": { "type": "string" },
+          "repeat": { "type": "string", "enum": ["once", "daily", "weekdays", "weekends"], "default": "once" }
+        },
+        "required": ["time"]
+      }
+    },
+    {
+      "name": "set_timer",
+      "group": "device",
+      "confirm": "never",
+      "description": "Start a countdown timer.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "seconds": { "type": "integer", "minimum": 1 },
+          "label": { "type": "string" }
+        },
+        "required": ["seconds"]
+      }
+    },
+    {
+      "name": "call_contact",
+      "group": "comms",
+      "confirm": "ambiguous",
+      "description": "Call a person.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "contact_ref": { "type": "string", "description": "Exactly what the user said: a name, nickname or relation like 'wife'. Never a number." },
+          "number_label": { "type": "string", "enum": ["mobile", "home", "work"] },
+          "sim": { "type": "integer", "enum": [1, 2] }
+        },
+        "required": ["contact_ref"]
+      }
+    },
+    {
+      "name": "send_message",
+      "group": "comms",
+      "confirm": "always",
+      "description": "Send a text message to a person.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "contact_ref": { "type": "string", "description": "Exactly what the user said. Never a number." },
+          "body": { "type": "string", "description": "The message text only, without the command words." },
+          "channel": { "type": "string", "enum": ["auto", "sms", "rcs", "whatsapp", "telegram"], "default": "auto" }
+        },
+        "required": ["contact_ref", "body"]
+      }
+    },
+    {
+      "name": "reply_to_last",
+      "group": "comms",
+      "confirm": "always",
+      "description": "Reply to the most recent incoming message.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "body": { "type": "string" },
+          "app": { "type": "string", "enum": ["any", "whatsapp", "telegram", "sms"], "default": "any" },
+          "from_ref": { "type": "string", "description": "Only if the user names who to reply to." }
+        },
+        "required": ["body"]
+      }
+    },
+    {
+      "name": "read_notifications",
+      "group": "comms",
+      "confirm": "never",
+      "description": "Read out recent notifications or messages.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "app": { "type": "string", "enum": ["any", "whatsapp", "telegram", "sms"], "default": "any" },
+          "from_ref": { "type": "string" },
+          "limit": { "type": "integer", "minimum": 1, "maximum": 10, "default": 3 }
+        }
+      }
+    },
+    {
+      "name": "play_music",
+      "group": "media",
+      "confirm": "never",
+      "description": "Play music on Spotify.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query": { "type": "string", "description": "Song, artist, album or playlist exactly as spoken. Empty string means resume/liked songs." },
+          "kind": { "type": "string", "enum": ["any", "track", "artist", "album", "playlist", "liked"], "default": "any" },
+          "shuffle": { "type": "boolean" }
+        },
+        "required": ["query"]
+      }
+    },
+    {
+      "name": "media_control",
+      "group": "media",
+      "confirm": "never",
+      "description": "Control the current playback.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "action": { "type": "string", "enum": ["pause", "resume", "next", "previous", "stop", "shuffle_on", "shuffle_off", "like_current"] }
+        },
+        "required": ["action"]
+      }
+    },
+    {
+      "name": "teach_alias",
+      "group": "assistant",
+      "confirm": "always",
+      "description": "Remember that a word refers to a contact, e.g. 'my wife is Priya'.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "alias": { "type": "string", "description": "The word to remember, e.g. 'wife', 'bunty'." },
+          "contact_ref": { "type": "string", "description": "The person it refers to, as spoken." },
+          "kind": { "type": "string", "enum": ["relation", "nickname"] }
+        },
+        "required": ["alias", "contact_ref", "kind"]
+      }
+    },
+    {
+      "name": "run_routine",
+      "group": "assistant",
+      "confirm": "never",
+      "description": "Run a saved routine by name.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" }
+        },
+        "required": ["name"]
+      }
+    },
+    {
+      "name": "ask_clarification",
+      "group": "assistant",
+      "confirm": "never",
+      "description": "Ask the user for a missing detail instead of guessing.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "question": { "type": "string" }
+        },
+        "required": ["question"]
+      }
+    },
+    {
+      "name": "unsupported",
+      "group": "assistant",
+      "confirm": "never",
+      "description": "Use when the request matches none of the other tools.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "reason": { "type": "string" }
+        }
+      }
+    }
+  ]
+}
