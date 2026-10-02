@@ -52,6 +52,12 @@ venv/
 benchmark-results/
 *.log
 
+# Generated fine-tuning data. `scripts/gen_training_data.py` reproduces it
+# byte-for-byte from a seed, and it grows into tens of MB, so tracking it would
+# bloat history for no benefit. The golden eval set is deliberately NOT ignored:
+# eval/ is small and is the regression baseline the scorer is checked against.
+data/
+
 # ---- Editors / OS ----
 .idea/
 *.iml

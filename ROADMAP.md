@@ -53,6 +53,14 @@ Every phase has a **numeric exit gate**. Phases 0–2 are device-independent
 | 7 | Learning loop | No | Corrections captured → `asr_variant` aliases; eval export runs; synthetic data generator produces valid JSONL |
 | 8 | Hardening | **Yes** | Thermal degradation ladder verified; idle LLM unload works; survives Doze / App Standby |
 
+**Phase 7 status — partially complete.** The synthetic generator and the eval
+harness are done and need no device (`scripts/`, `eval/eval_set.jsonl`). The
+remaining two clauses of the gate are *inherently* device-gated: capturing
+corrections and exporting an eval set both start from `command_log`, which only
+accumulates once the app runs and a user actually mis-says something. Those
+clauses cannot be satisfied by synthetic means, and faking them would produce a
+learning loop that never learns anything real.
+
 ### Dependency DAG
 
 ```

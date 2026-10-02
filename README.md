@@ -4,7 +4,8 @@ Local, privacy-first voice assistant for Android. Speaks to you, acts on your ph
 keeps every byte on the device.
 
 **Status:** Phases 0–2 of the roadmap are complete and green on the JVM.
-Phases 3–8 are untouched and need the physical Moto G34 5G.
+Phase 7 (synthetic training data + eval harness) is done and device-free.
+Phases 3–6 and 8 need the physical Moto G34 5G.
 Current truth lives in [ROADMAP.md](ROADMAP.md) §1a; the full plan is
 [ROADMAP.md](ROADMAP.md).
 
@@ -73,6 +74,12 @@ under two seconds with no emulator.
 │       ├── data/SqlCipherDb    encrypted SQLite driver (Keystore-wrapped key)
 │       ├── data/ContactSync    Android contacts → contacts/aliases/endpoints
 │       └── MainActivity        temporary dev UI
+├── scripts/
+│   ├── voice_data.py           shared schema loader + validation
+│   ├── gen_training_data.py    synthetic function-calling generator
+│   └── eval_harness.py         exact-match scorer + refusal gates
+├── eval/eval_set.jsonl         committed golden eval baseline
+├── data/                       generated training data (gitignored)
 └── docs/benchmarks.md          device measurement procedure
 ```
 
@@ -121,12 +128,52 @@ silently, and adding one is a bug, not a feature.
 - No migration path yet — `onUpgrade` throws rather than dropping the database,
   because dropping it would destroy taught aliases and relationships that cannot
   be resynced.
-- `scripts/`, `eval/`, and the fine-tuning data generator do not exist yet.
+- The training corpus is synthetic and template-generated. It is a bootstrap for
+  fine-tuning, not a substitute for real corrected utterances; the eval set is
+  designed to absorb those as they accumulate.
+- The generator has no model in the loop, so it can only produce phrasings its
+  templates anticipate. Its real coverage comes from promoting `command_log`
+  corrections into `eval/eval_set.jsonl` and retraining on them.
+
+---
+
+## Training data and evaluation
+
+```sh
+scripts/gen_training_data.py --out data/ --per-tool 60
+scripts/eval_harness.py --dataset eval/eval_set.jsonl
+```
+
+Both scripts read `tools.json`, so a schema change is picked up on the next run
+rather than needing edits in two places. Output is deterministic for a given
+`--seed`.
+
+**The generator only trains the LLM's actual territory.** The fast path already
+handles 8 of the 17 tools, so the model only ever sees the residual — training
+it on `set_flashlight` would spend gradient steps on behaviour that never
+reaches it. Fast-path examples are generated too, but tagged `fast` and excluded
+by default; they exist so the router can be verified, not to be trained on.
+
+Three behaviours are taught deliberately because they are the ones a small
+model gets wrong in the most damaging way:
+
+- **Negations never become tool calls.** "don't call my wife" must not resolve to
+  `call_contact`; polarity is not something to flip.
+- **A missing required slot becomes `ask_clarification`,** never a partially
+  filled call. A half-filled call is the most likely thing to execute wrongly.
+- **An out-of-enum value becomes `ask_clarification`,** never a clamp. Asked for
+  150% brightness the wrong answer is not an error — it is 100%, delivered
+  confidently.
+
+**Read the refusal gates, not the average.** The scorer exits non-zero if any
+gate drops below threshold. A model that mishandles negations still scores ~77%
+overall, because most examples are ordinary commands it gets right; the average
+would pass it. See `eval/README.md`.
 
 ---
 
 ## Next
 
-1. `scripts/gen_training_data.py` + `scripts/eval_harness.py` (Phase 7, device-free)
-2. Instrumented FTS5 smoke test to close the SQLCipher question
+1. Instrumented FTS5 smoke test to close the SQLCipher question
+2. Wire the eval harness to a real model run once the runner exists
 3. Audio spine: Silero VAD + Moonshine on device
